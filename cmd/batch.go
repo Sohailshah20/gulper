@@ -45,8 +45,3 @@ var batch = &cobra.Command{
 		// db.BatchInsert(col, data)
 	},
 }
-
-type Options struct {
-	FieldName *textinput.Output
-	FiledType string
-}

@@ -4,14 +4,23 @@ package textinput
 // component library.
 
 import (
-	// "fmt"
-
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	// "github.com/sohailshah20/csvbatch/cmd"
 	// "golang.org/x/text/cases"
 )
+
+var style = lipgloss.NewStyle().
+	Width(100).
+	Align(lipgloss.Left).
+	Foreground(lipgloss.Color("63")).
+	BorderStyle(lipgloss.RoundedBorder()).
+    BorderForeground(lipgloss.Color("228")).
+    BorderBackground(lipgloss.Color("63")).
+    BorderTop(true).
+    BorderLeft(true)
+
 
 type Output struct {
 	Output string
@@ -47,6 +56,7 @@ type Main struct {
 	height    int
 	answer    textinput.Model
 	done      bool
+	style     *lipgloss.Style
 }
 
 func NewMain(questions []Question) *Main {
@@ -60,7 +70,7 @@ func NewMain(questions []Question) *Main {
 }
 
 func (m Main) Init() tea.Cmd {
-	return nil
+	return textinput.Blink
 }
 
 func (m *Main) Next() {
@@ -105,7 +115,7 @@ func (m Main) View() string {
 	}
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
-		m.Questions[m.index].question,
-		m.answer.View(),
+		style.Render(m.Questions[m.index].question),
+		style.Render(m.answer.View()),
 	)
 }
