@@ -12,8 +12,8 @@ type Db struct {
 	conn *pgx.Conn
 }
 
-func NewDb() (*Db, error) {
-	conn, err := pgx.Connect(context.Background(), "postgres://postgres:root@localhost:5432/csvbatch")
+func NewDb(dbUri string) (*Db, error) {
+	conn, err := pgx.Connect(context.Background(), dbUri)
 	if err != nil {
 		return nil, err
 	}

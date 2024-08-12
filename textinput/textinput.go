@@ -4,9 +4,13 @@ package textinput
 // component library.
 
 import (
-	"fmt"
+	// "fmt"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	// "github.com/sohailshah20/csvbatch/cmd"
+	// "golang.org/x/text/cases"
 )
 
 type Output struct {
@@ -21,55 +25,87 @@ type (
 	errMsg error
 )
 
-type model struct {
-	textInput textinput.Model
-	err       error
-	output    *Output
-	header    string
+type Question struct {
+	question string
+	answer   string
 }
 
-func InitialModel(output *Output, header string) model {
-	ti := textinput.New()
-	ti.Placeholder = "file path"
-	ti.Focus()
-	ti.CharLimit = 1024
-	ti.Width = 20
+func NewQuestions(q []string) []Question {
+	var questions []Question
+	for _, qes := range q {
+		questions = append(questions, Question{
+			question: qes,
+		})
+	}
+	return questions
+}
 
-	return model{
-		textInput: ti,
-		err:       nil,
-		output:    output,
-		header:    header,
+type Main struct {
+	index     int
+	Questions []Question
+	width     int
+	height    int
+	answer    textinput.Model
+	done      bool
+}
+
+func NewMain(questions []Question) *Main {
+	textInput := textinput.New()
+	textInput.Placeholder = "type here"
+	textInput.Focus()
+	return &Main{
+		Questions: questions,
+		answer:    textInput,
 	}
 }
 
-func (m model) Init() tea.Cmd {
-	return textinput.Blink
+func (m Main) Init() tea.Cmd {
+	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Main) Next() {
+	if m.index < len(m.Questions)-1 {
+		m.index++
+	} else {
+		m.index = 0
+	}
+}
+
+func (m Main) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-
+	current := &m.Questions[m.index]
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
-			m.output.updateOutput(m.textInput.Value())
+		switch msg.String() {
+		case "ctrl+c":
 			return m, tea.Quit
+		case "enter":
+			if m.index == len(m.Questions)-1 {
+				m.done = true
+			}
+			current.answer = m.answer.Value()
+			m.answer.SetValue("")
+			m.Next()
+			return m, nil
 		}
-	case errMsg:
-		m.err = msg
-		return m, nil
 	}
-
-	m.textInput, cmd = m.textInput.Update(msg)
+	m.answer, cmd = m.answer.Update(msg)
 	return m, cmd
 }
 
-func (m model) View() string {
-	return fmt.Sprintf(
-		m.header+"\n\n%s\n\n%s",
-		m.textInput.View(),
-		"(esc to quit)",
-	) + "\n"
+func (m Main) View() string {
+	if m.done {
+		return "Working"
+	}
+	if m.width == 0 {
+		return "loading..."
+	}
+	return lipgloss.JoinVertical(
+		lipgloss.Center,
+		m.Questions[m.index].question,
+		m.answer.View(),
+	)
 }
