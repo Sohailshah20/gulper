@@ -4,31 +4,14 @@ package textinput
 // component library.
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	// "github.com/sohailshah20/csvbatch/cmd"
-	// "golang.org/x/text/cases"
+	"github.com/sohailshah20/csvbatch/csv"
+	"github.com/sohailshah20/csvbatch/db"
 )
-
-var style = lipgloss.NewStyle().
-	Width(100).
-	Align(lipgloss.Left).
-	Foreground(lipgloss.Color("63")).
-	BorderStyle(lipgloss.RoundedBorder()).
-    BorderForeground(lipgloss.Color("228")).
-    BorderBackground(lipgloss.Color("63")).
-    BorderTop(true).
-    BorderLeft(true)
-
-
-type Output struct {
-	Output string
-}
-
-func (o *Output) updateOutput(val string) {
-	o.Output = val
-}
 
 type (
 	errMsg error
@@ -37,6 +20,7 @@ type (
 type Question struct {
 	question string
 	answer   string
+	done     bool
 }
 
 func NewQuestions(q []string) []Question {
@@ -57,6 +41,7 @@ type Main struct {
 	answer    textinput.Model
 	done      bool
 	style     *lipgloss.Style
+	inserted  bool
 }
 
 func NewMain(questions []Question) *Main {
@@ -95,8 +80,13 @@ func (m Main) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.index == len(m.Questions)-1 {
 				m.done = true
+				return m, nil
+			}
+			if m.inserted {
+				return m, tea.Quit
 			}
 			current.answer = m.answer.Value()
+			current.done = true
 			m.answer.SetValue("")
 			m.Next()
 			return m, nil
@@ -107,15 +97,37 @@ func (m Main) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Main) View() string {
+	done := strings.Builder{}
+	for _, s := range m.Questions {
+		if s.done {
+			done.WriteString(s.question + "\n" + s.answer + "\n")
+		}
+	}
+	content := done.String()
 	if m.done {
-		return "Working"
+		filePath := m.Questions[0].answer
+		col, data, err := csv.ReadFile(filePath)
+		if err != nil {
+			return err.Error()
+		}
+		db, err := db.NewDb(m.Questions[1].answer)
+		if err != nil {
+			return err.Error()
+		}
+
+		db.BatchInsert(col, data)
+		m.inserted = true
+		return "done"
 	}
 	if m.width == 0 {
 		return "loading..."
 	}
+	// m.Questions.
+
 	return lipgloss.JoinVertical(
-		lipgloss.Center,
-		style.Render(m.Questions[m.index].question),
-		style.Render(m.answer.View()),
+		lipgloss.Left,
+		content,
+		m.Questions[m.index].question,
+		m.answer.View(),
 	)
 }
